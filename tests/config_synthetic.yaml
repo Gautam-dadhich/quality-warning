@@ -1,0 +1,47 @@
+# ------------------------------------------------------------------
+# Central configuration. Every threshold / date used in the paper lives
+# here so results can be reproduced from one file.
+# ------------------------------------------------------------------
+
+seed: 42
+results_dir: tests/tmp/results
+
+data:
+  category: Appliances
+  # Amazon Reviews'23 raw review file (verify URL against
+  # https://amazon-reviews-2023.github.io/ if the download fails)
+  reviews_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/Appliances.jsonl.gz
+  meta_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/meta_Appliances.jsonl.gz
+  raw_reviews: tests/tmp/Appliances_synthetic.jsonl.gz
+  raw_meta: data/raw/meta_Appliances.jsonl.gz
+  clean_reviews: tests/tmp/reviews_clean     # extension added automatically (.parquet or .csv.gz)
+  windows: tests/tmp/product_windows         # extension added automatically
+  # Study period (inclusive). Reviews outside are dropped.
+  start_date: "2014-01-01"
+  end_date: "2023-09-30"
+
+windows:
+  # Decision dates are the first day of each calendar month.
+  # Past (feature) window = the `past_months` full months BEFORE the decision month.
+  # Future (target) window = the `future_months` full months starting AT the decision month.
+  past_months: 2
+  future_months: 1
+
+label:
+  low_rating_max: 2          # ratings <= this count as "low" (1-2 stars)
+  min_past_reviews: 5        # product must have >= this many reviews in past window to be scored
+  min_future_reviews: 5      # future window needs >= this many reviews to be labelled (else unlabelled)
+  min_future_low_share: 0.30 # future low-rating share must be >= this
+  min_share_increase: 0.10   # ...and exceed past low-rating share by >= this (absolute)
+
+sensitivity:
+  # Grid explored by 03_label_report.py
+  min_share_increase: [0.05, 0.10, 0.15]
+  min_future_reviews: [3, 5]
+  min_past_reviews: [3, 5]
+
+split:
+  # Chronological split on decision date (inclusive bounds).
+  train_end: "2020-12-31"
+  val_end: "2021-12-31"
+  # test = everything after val_end
