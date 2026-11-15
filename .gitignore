@@ -1,0 +1,11 @@
+# raw / processed data are not committed (download via src/01_download.py)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+tests/tmp/
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+.DS_Store
