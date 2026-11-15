@@ -43,8 +43,11 @@ def load_and_clean(cfg: dict) -> tuple[pd.DataFrame, list[tuple[str, int]]]:
     log: list[tuple[str, int]] = []
     chunks = []
     n_raw = 0
+    # convert_dates/keep_default_dates=False: stop pandas from auto-parsing the
+    # "timestamp" column (it guesses the unit); we convert it explicitly below.
     reader = pd.read_json(path, lines=True, chunksize=250_000, compression="infer",
-                          dtype={"asin": str, "parent_asin": str, "user_id": str})
+                          dtype={"asin": str, "parent_asin": str, "user_id": str},
+                          convert_dates=False, keep_default_dates=False)
     for i, ch in enumerate(reader):
         n_raw += len(ch)
         for c in REVIEW_COLS:
@@ -69,8 +72,12 @@ def load_and_clean(cfg: dict) -> tuple[pd.DataFrame, list[tuple[str, int]]]:
     df = df[df["rating"].between(1, 5)]
     log.append(("dropped: rating outside 1-5", before - len(df)))
 
-    # Reviews'23 timestamps are Unix milliseconds
-    df["date"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True).dt.tz_localize(None)
+    # Reviews'23 timestamps are Unix milliseconds; detect the unit defensively
+    # in case a different pandas version or file variant gives seconds/nanoseconds.
+    med = float(df["timestamp"].median())
+    unit = "ns" if med > 1e17 else ("us" if med > 1e14 else ("ms" if med > 1e11 else "s"))
+    print(f"  timestamp unit detected: {unit} (median value {med:.3e})")
+    df["date"] = pd.to_datetime(df["timestamp"].astype("int64"), unit=unit, utc=True).dt.tz_localize(None)
     start, end = pd.Timestamp(cfg["data"]["start_date"]), pd.Timestamp(cfg["data"]["end_date"])
     before = len(df)
     df = df[(df["date"] >= start) & (df["date"] < end + pd.Timedelta(days=1))]
