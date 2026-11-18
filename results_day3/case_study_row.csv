@@ -1,2 +1,0 @@
-product_id,decision_date,split,label,logreg [S],boosting [S],logreg [S+A],boosting [S+A],logreg [S+A+T],boosting [S+A+T],rule_low_share,rule_share_change,cusum
-B01CBWDY0C,2023-01-01,test,1,0.9260070651468412,0.7265197322716904,0.9249014083364724,0.7111535215513908,0.9346445054446594,0.6437242081705087,0.2857142857142857,-0.2976190476190476,0.0
