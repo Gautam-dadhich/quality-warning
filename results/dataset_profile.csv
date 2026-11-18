@@ -1,0 +1,12 @@
+,value
+clean reviews,2033424
+products (any review),91642
+decision months (first),2014-03-01
+decision months (last),2023-09-01
+product-months with past activity,1022055
+labelled product-months,72977
+distinct products (labelled),6403
+positive events,7744
+positive rate (%),10.61
+train ends,2020-12-31
+val ends,2021-12-31

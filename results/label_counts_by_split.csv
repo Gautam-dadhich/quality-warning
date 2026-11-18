@@ -1,0 +1,4 @@
+split,windows_with_past_activity,labelled,positives,products_labelled,positive_rate_%
+train,596395,46117,3857,4356,8.36
+val,165605,12095,1570,2561,12.98
+test,260055,14765,2317,2667,15.69
