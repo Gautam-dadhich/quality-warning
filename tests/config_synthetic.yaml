@@ -10,8 +10,8 @@ data:
   category: Appliances
   # Amazon Reviews'23 raw review file (verify URL against
   # https://amazon-reviews-2023.github.io/ if the download fails)
-  reviews_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/Appliances.jsonl.gz
-  meta_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/meta_Appliances.jsonl.gz
+  reviews_url: https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/Appliances.jsonl.gz
+  meta_url: https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/meta_categories/meta_Appliances.jsonl.gz
   raw_reviews: tests/tmp/Appliances_synthetic.jsonl.gz
   raw_meta: data/raw/meta_Appliances.jsonl.gz
   clean_reviews: tests/tmp/reviews_clean     # extension added automatically (.parquet or .csv.gz)
@@ -45,3 +45,31 @@ split:
   train_end: "2020-12-31"
   val_end: "2021-12-31"
   # test = everything after val_end
+
+features:
+  features_table: tests/tmp/features      # labelled rows + all model inputs
+  docs_table: tests/tmp/window_docs       # one text document per labelled window
+  # text document per window: from each past month keep up to N reviews,
+  # lowest-rated first (complaints carry the signal), then most recent
+  max_reviews_per_month_doc: 25
+  max_chars_per_review: 400
+
+baselines:
+  cusum_k: [0.0, 0.05, 0.10, 0.20]   # CUSUM slack values; best chosen on validation
+
+evaluation:
+  top_frac: 0.10          # precision/recall in the top 10% of ranked windows
+  monthly_capacity: 50    # alerts a quality team can investigate per month
+  n_bootstrap: 200        # bootstrap resamples for test-set confidence intervals
+
+models:
+  predictions: tests/tmp/results/predictions.csv.gz
+  tfidf:
+    max_features: 20000
+    ngram_range: [1, 2]
+    min_df: 2
+  svd_components: 100          # TF-IDF -> dense components for gradient boosting
+  logreg_C: [0.1, 1.0]         # chosen on validation PR-AUC
+  hgb_grid:                    # chosen on validation PR-AUC
+    - {learning_rate: 0.05, max_leaf_nodes: 15, max_iter: 300}
+    - {learning_rate: 0.05, max_leaf_nodes: 31, max_iter: 300}
