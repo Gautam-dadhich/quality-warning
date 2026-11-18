@@ -16,8 +16,8 @@ in this repository; `src/01_download.py` fetches them from the official source.
 ## Setup
 
 ```bash
-git clone <this-repo-url>
-cd amlbt-quality-warning
+git clone https://github.com/Gautam-dadhich/quality-warning.git
+cd quality-warning
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -31,6 +31,11 @@ python src/01_download.py          # ~downloads Appliances.jsonl.gz into data/ra
 python src/02_build_windows.py     # cleaning + product x month windows + labels
 python src/03_label_report.py      # label counts, sensitivity grid, dataset profile
 python tests/test_windows.py       # brute-force check of window sums / leakage guards
+python src/04_features.py          # complaint aspects, share changes, CUSUM, text documents
+python tests/test_features.py      # brute-force check of step-4 features (incl. CUSUM leakage)
+python src/05_baselines.py         # rule-based and CUSUM baselines -> results/baselines.csv
+python src/06_models.py            # LogReg + gradient boosting, ablation S / S+A / S+A+T
+python src/07_figures.py           # paper figures -> results/figures/
 ```
 
 All thresholds, window lengths, split dates and the random seed are in
@@ -70,11 +75,18 @@ src/
   01_download.py         fetch raw data
   02_build_windows.py    clean reviews, build product-month windows, labels, split
   03_label_report.py     label feasibility, sensitivity grid, dataset profile
+  04_features.py         aspect / change / CUSUM features + per-window text documents
+  05_baselines.py        rolling-rating rules and CUSUM baseline
+  06_models.py           ML models + feature-set ablation, importances, predictions
+  07_figures.py          PR curves, PR-AUC bars, capacity curves, importance, case study
+  aspects.py             complaint-aspect regex lexicon (8 aspects)
+  evaluation.py          shared metrics (PR-AUC, P@top10%, capacity, val-tuned F1, bootstrap CI)
   labels.py              single definition of the target
   utils.py               config + I/O helpers
 tests/
   make_synthetic.py      synthetic data in the Reviews'23 schema with planted episodes
   test_windows.py        brute-force recount + leakage/structure assertions
+  test_features.py       brute-force check of aspect, change and CUSUM features
 docs/data_dictionary.md  every column explained
 results/                 generated tables (CSV) and figures
 ```
