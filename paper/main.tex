@@ -1,0 +1,107 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,booktabs,graphicx,url}
+\input{values}
+\input{capacity}
+\input{queue}
+\input{benchmark}
+\begin{document}
+\title{Early Warning of Product Quality Problems from Customer Reviews:\\Which Products Should a Quality Team Investigate First?}
+\author{\IEEEauthorblockN{Parth Arya, Vijay Krishna, Gautam Dadhich}
+\IEEEauthorblockA{Big Data Analytics, Goa Institute of Management, Goa, India\\B2026027, B2026053, B2026015}}
+\maketitle
+\begin{abstract}
+A quality manager choosing 50 products to investigate faces two uncertainties. Will complaints increase, and will enough reviews arrive to establish whether they did? Using 2.03 million Amazon Appliances reviews, we evaluated both questions chronologically. Among product-months with observable outcomes, validation-selected gradient boosting achieved test average precision of 0.304 versus 0.204 for a cumulative-sum control chart (CUSUM). We then rebuilt each monthly queue using information available when investigations would begin. Across 21 months and \CAAlerts{} slots, risk-only boosting identified \GBHits{} subsequent spikes in one- and two-star reviews and CUSUM identified \CUHits{}. Multiplying predicted risk by the estimated probability of sufficient review coverage raised the count to \CAHits{}. For these confirmed hits, the median interval from alert to a sustained, observable spike was \QDays{} days. These results quantify investigation yield for a review-based signal. Establishing physical defects or avoided reputational damage requires independent evidence.
+\end{abstract}
+\begin{IEEEkeywords}product quality, online reviews, early warning, alert prioritization, statistical process control\end{IEEEkeywords}
+\section{Introduction}
+On 1 January a quality analyst might investigate a washing-machine listing with several reports of leaks, an appliance with a history of intermittent failures, or a new product with few reviews. Each choice uses an investigation slot. For some choices the following month brings too little feedback even to judge whether a warning was warranted. A deployment evaluation needs to count those slots.
+
+We ask three questions. Can review history anticipate a rise in low ratings, and does text improve the forecast? Which ranking finds the most verifiable spikes for a fixed workload? On confirmed alerts, how long before the evidence accumulates does the warning arrive? A quality analyst can use the resulting shortlist to inspect recurring complaints and cross-check returns, service tickets, installation problems or supplier records.
+
+Prior work identified defect-related signals in reviews and discussion threads \cite{abbas,abrahams,winkler}. Our unit is a product at the start of a month and the outcome comes from subsequent reviews. CUSUM accumulates deviations from a historical reference \cite{page}, making it a useful comparator for a team already tracking complaint trends. Recent volume provides another: it tests how far the team can get by investigating popular products alone. Our contribution is to evaluate each decision before outcomes are available, account for every slot, and measure warning time from dated reviews.
+\section{Data and Target}
+The Appliances category of Amazon Reviews'23 \cite{hou,amazon} contained 2,128,605 raw reviews. Date filtering to January 2014--September 2023 removed 73,341 records. Deduplication on reviewer, parent product, timestamp, rating and body removed 21,840. The clean sample contains 2,033,424 reviews of 91,642 products. Variants share a parent product ID when available.
+
+A product is eligible on the first day of a month if the two preceding full months contain five or more reviews. For a January decision, November and December form the principal feature window. Trends may also draw on the preceding two months and earlier product history. Let $b$ denote the past share of one- and two-star reviews, $n$ the target-month review count and $s$ the target-month low-rating share. The outcome is observable when $O=\mathbf{1}[n\geq5]$. Among observable cases the event is
+\[
+Y=\mathbf{1}[s\geq0.30\ \text{and}\ s-b\geq0.10].
+\]
+One low rating in ten past reviews followed by three in eight new reviews qualifies: the share rose from 10\% to 37.5\%. Three low ratings in four new reviews leave the outcome unresolved. A delivery delay, an inaccurate listing and a physical defect can all produce a spike.
+
+\begin{table}[t]\centering\caption{Observable cohort by decision date. Products can appear in several months.}\label{split}
+\begin{tabular}{lrrr}\toprule Period & Labelled & Events & Rate\\\midrule
+Train, 2014--2020 & 46,117 & 3,857 & 8.4\%\\
+Validation, 2021 & 12,095 & 1,570 & 13.0\%\\
+Test, 2022--Sep.\ 2023 & 14,765 & 2,317 & 15.7\%\\\bottomrule
+\end{tabular}\end{table}
+Across the study, 174,868 product-months met the past-volume requirement and 72,977 had observable outcomes. In the test period 39,938 were eligible and 14,765 were observable (37.0\%). Table~\ref{split} shows the rising event rate. Average precision must be interpreted alongside the prevalence in its evaluation period.
+\section{Methods}
+\subsection{Historical ranking benchmark}
+We compared logistic regression and histogram gradient boosting \cite{friedman} with the past low-rating share, its change, and an upper CUSUM. Structured features (S) include volume, rating level and dispersion, changes from the preceding window, product age, and four CUSUM scores. The chart accumulates each month's low-rating share above the product's historical pooled rate, with a slack allowance and a floor of zero. Aspect features (A) summarize eight complaint categories including leaks, poor fit, damage and failure in use. The 27 features describe prevalence, change and prevalence among low-rated reviews. A positive mention of an easy refund can trigger the same keyword as a complaint, limiting interpretation.
+
+Text features (T) use training-fitted TF--IDF unigrams and bigrams. Within each past month the implementation retains up to 25 reviews, lowest-rated first and then most recent, truncating each to 400 characters. Logistic regression uses sparse text features directly. Boosting uses 100 SVD components. Average precision (AP) summarizes precision and recall across thresholds in this rare-event task \cite{saito}. Historical models included the snapshot's aggregate helpful-vote count. Its value at the historical decision date cannot be reconstructed. We removed it from all newly fitted queue models.
+
+\subsection{Decision-date replay}
+In each test month, rank every product meeting the past-volume requirement. Select the highest $K$ scores, breaking ties by product ID, then join next-month outcomes. Each product can appear again in a later month. We use $K=50$ as the main scenario and 10, 100 and 200 as capacity checks.
+
+The risk estimator $r(x)=P(Y=1\mid O=1,x)$ uses the structured-plus-aspect family selected in the original validation study. We fit observable training outcomes with 300 boosting iterations, learning rate 0.05 and L2 penalty 1. Validation AP selected 15 leaves from 15 and 31. The coverage estimator uses the same architecture and learns $P(O=1\mid x)$ from all eligible training windows. Its target is whether at least five subsequent reviews arrived. The additional ranking score estimates
+\[
+q(x)=P(O=1\mid x)\,P(Y=1\mid O=1,x).
+\]
+This joint probability targets a verifiable spike. A product with high conditional risk but sparse feedback can move down the list. Comparators are CUSUM (validation-selected slack 0.05), recent review volume, and ascending prior low-rating share. The last rule tests whether arithmetic headroom for an increase explains performance on its own.
+
+For $H$ confirmed spikes, $F$ observable non-events and $U$ unknown outcomes, confirmed yield is $H/(H+F+U)$. Precision among observable alerts is $H/(H+F)$. The first measures evidence obtained per investigation. An unresolved alert earns no credit toward verified yield and its underlying product condition remains unknown.
+
+\section{Results}
+\subsection{Review history and the contribution of text}
+\begin{table}[t]\centering\caption{Archived benchmark on observable cases. P@50 is precision after restricting candidates to labelled cases.}\label{bench}
+\begin{tabular}{lrrr}\toprule Method & Val.\ AP & Test AP & P@50\\\midrule
+\BenchmarkRows\bottomrule\end{tabular}\end{table}
+Validation-selected boosting (S+A) reached 0.304 test AP (95\% month-bootstrap interval 0.283--0.327), against 0.204 for CUSUM and 0.157 test prevalence. Full-text boosting reached 0.308 on test but scored lower on validation (Table~\ref{bench}). Adding aspects and text to structured inputs gained 0.005 AP for boosting, with a paired interval of $-0.005$ to $+0.018$, and 0.008 for logistic regression. Complaint themes can direct investigators to relevant reviews; the evidence for a ranking gain from text is limited.
+
+The rising-share rule produced ROC-AUC 0.423. Regression toward typical complaint rates offers one explanation. The target also requires a further rise from the current baseline, making another qualifying increase mechanically harder after an unusually bad recent window.
+
+\subsection{What 50 investigations actually return}
+\begin{table*}[t]\centering\caption{Decision-date replay over 21 months. Unknown denotes fewer than five reviews in the target month. Verified yield uses all issued slots.}\label{queue}
+\begin{tabular}{lrrrrr}\toprule Policy & Issued & Confirmed spike & Observable non-event & Unknown & Verified yield (\%)\\\midrule
+\QueueRows\bottomrule\end{tabular}\end{table*}
+Table~\ref{queue} uses every product eligible at decision time. Risk-only boosting recorded \GBHits{} hits and 713 unknowns. Among its observable alerts, precision was 42.4\%. Across all issued slots, confirmed yield was 13.6\%. Choosing on volume alone produced 101 hits. Ranking by low prior share alone found 18.
+
+Coverage-adjusted ranking produced \CAHits{} hits, 524 observable non-events and \CAUnknown{} unknowns. Its precision among observable alerts was \CAObserved\%. A larger share of its queue could be evaluated, raising confirmed yield to \CAPercent\%. Compared with CUSUM it provided \Gain{} additional confirmed spikes per month and had more hits in \Wins{} of \Months{} months. A paired circular block bootstrap (three consecutive months per block, 5,000 draws, seed 42) gave an indicative 95\% interval of \GapLo{} to \GapHi{} additional hits per month. This interval describes variation within the replay, conditional on the fitted models.
+
+\begin{figure}[tb]\centering\includegraphics[width=\columnwidth]{monthly_queue.pdf}\caption{Monthly outcomes of the 50-slot queue. Sparse follow-up near the end of the test period increases the number of unresolved alerts.}\label{fig:queue}\end{figure}
+\begin{table}[tb]\centering\caption{Confirmed spikes per 100 issued slots by monthly capacity.}\label{cap}
+\begin{tabular}{rrrr}\toprule $K$ & CUSUM & Risk-only & Coverage-adjusted\\\midrule
+\CapacityRows\bottomrule\end{tabular}\end{table}
+At 200 slots, coverage-adjusted ranking finds 817 confirmed events, or 35.3\% of all 2,317 known test events. At 50 the corresponding share is 11.4\%. A manager can reach more events with additional investigations at diminishing yield per slot (Table~\ref{cap}). Figure~\ref{fig:queue} shows the month-to-month variation behind the averages.
+
+\subsection{Measured warning time}
+For each confirmed hit we reconstructed the cumulative count and low-rating share after each review day. We located the first day on which all criteria were met and remained satisfied through month-end. A January~1 alert first meeting and sustaining the criterion on January~18 has a 17-day lead. Among the \CAHits{} confirmed coverage-adjusted alerts the median was \QDays{} days (interquartile range \QLow{}--\QHigh{}). This measures time to sustained review evidence conditional on a hit. Defect onset and time required for investigators to act remain unknown.
+
+\section{Business Interpretation and Limitations}
+A team seeking verifiable signals per investigation obtained about one confirmed spike per four slots under coverage-adjusted ranking. Optimizing for review coverage favors products receiving regular feedback. A team responsible for low-volume or emerging products could reserve slots for them and use returns or support tickets to verify outcomes. Repeated complaints about an incompatible part might prompt a listing correction, while repeated reports of a unit failing in use might warrant a batch check.
+
+Products recur and adjacent feature windows overlap. Month-block resampling preserves some dependence, but the study covers one category and includes sparse late months. We designed the queue extension after inspecting the original benchmark on these dates. It is a retrospective comparison. Performance on later dates, unfamiliar products and other categories remains open. The original sensitivity grid yielded positive rates from 8.9\% to 15.9\% as minimum volumes and required increases changed. Those counts establish how often the target occurs. Each alternative definition would require a separate queue evaluation to establish the policy ranking.
+
+Financial savings, independently confirmed defects and reputational changes were outside the available data. A prospective pilot could log analyst minutes, evidence, issue type, action date and disposition for each alert, alongside a sample outside the queue. Cost per independently confirmed issue would provide a direct test of business value.
+
+\section{Reproducibility}
+The team repository \cite{repo} contains the original analysis and benchmark outputs (base revision \texttt{571955b}). The accompanying revision includes decision-date feature construction, the alert ledger, dated threshold crossings and table generation. The historical benchmark is reported from archived outputs. The new queue models were fitted from the official raw review archive. The reconstructed clean-review and labelled-window counts matched the original report. Commands and pinned dependencies are supplied with the code.
+
+\paragraph{AI use declaration} AI assisted with the original data-processing and modeling code and with the design, implementation, execution, tables, figure and report text for this extension. The replay uses public review data. The authors retain responsibility for checking the analysis and approving the submission.
+
+\section{Conclusion}
+Accounting for the probability of sufficient review coverage raised verifiable spikes from \GBHits{} to \CAHits{} at the same \CAAlerts{}-slot budget. The \QDays{}-day median warning interval provides a concrete window for triage. A prospective study can establish whether investigators can use that time to confirm and resolve customer issues.
+
+\begin{thebibliography}{9}
+\bibitem{abbas} Y. Abbas and M. S. I. Malik, Defective products identification framework using online reviews, \emph{Electronic Commerce Research}, 23, 899--920, 2023.
+\bibitem{abrahams} A. S. Abrahams et al., An integrated text analytic framework for product defect discovery, \emph{Production and Operations Management}, 24, 975--990, 2015.
+\bibitem{winkler} M. Winkler et al., Toy safety surveillance from online reviews, \emph{Decision Support Systems}, 90, 23--32, 2016.
+\bibitem{page} E. S. Page, Continuous inspection schemes, \emph{Biometrika}, 41, 100--115, 1954.
+\bibitem{hou} Y. Hou et al., Bridging language and items for retrieval and recommendation, arXiv:2403.03952, 2024.
+\bibitem{amazon} McAuley Lab, Amazon Reviews'23, 2024. \url{https://amazon-reviews-2023.github.io/}
+\bibitem{friedman} J. H. Friedman, Greedy function approximation: A gradient boosting machine, \emph{Annals of Statistics}, 29, 1189--1232, 2001.
+\bibitem{saito} T. Saito and M. Rehmsmeier, The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets, \emph{PLOS ONE}, 10, e0118432, 2015.
+\bibitem{repo} P. Arya, V. Krishna and G. Dadhich, Quality warning: analysis code and archived results. \url{https://github.com/Gautam-dadhich/quality-warning}
+\end{thebibliography}
+\end{document}

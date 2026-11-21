@@ -72,6 +72,8 @@ def cusum_scores(pm: pd.DataFrame, ks: list[float]) -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=None)
+    ap.add_argument("--decision-queue", action="store_true",
+                    help="Build numeric features for all past-eligible windows, including unknown outcomes.")
     args = ap.parse_args()
     cfg = load_config(args.config)
     P = int(cfg["windows"]["past_months"])
@@ -81,14 +83,15 @@ def main() -> None:
 
     print("Loading windows and clean reviews ...")
     win = load_table(cfg["data"]["windows"], parse_dates=["decision_date"])
-    win = win[win["label"].notna()].reset_index(drop=True)
+    eligible = win["n_past"].ge(cfg["label"]["min_past_reviews"]) if args.decision_queue else win["label"].notna()
+    win = win.loc[eligible].reset_index(drop=True)
     win["mi"] = month_index(win["decision_date"])
     rev = load_table(cfg["data"]["clean_reviews"], parse_dates=["date"])
     rev["title"] = rev["title"].fillna("").astype(str)   # empty strings come back as NaN from CSV
     rev["text"] = rev["text"].fillna("").astype(str)
     rev["mi"] = month_index(rev["date"])
     rev["low"] = (rev["rating"] <= low_max).astype("int8")
-    print(f"  labelled windows: {len(win):,}   reviews: {len(rev):,}")
+    print(f"  selected windows: {len(win):,}   reviews: {len(rev):,}")
 
     print("Tagging complaint aspects (regex lexicon) ...")
     asp = tag_aspects(rev["title"], rev["text"])
@@ -155,6 +158,10 @@ def main() -> None:
     for c in cs_cols:
         feats[c] = merged[c].fillna(0).to_numpy()
 
+    if args.decision_queue:
+        p = save_table(feats, fcfg["features_table"] + "_queue")
+        print(f"Saved decision-time cohort -> {p} ({len(feats):,} windows)")
+        return
     p = save_table(feats, fcfg["features_table"])
     print(f"Saved features -> {p}  ({len(feats):,} rows, {feats.shape[1]} columns)")
 

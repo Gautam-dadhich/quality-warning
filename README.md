@@ -59,7 +59,7 @@ python tests/test_windows.py   --config tests/config_synthetic.yaml
 | Target window | calendar month *m* |
 | Low rating | 1–2 stars |
 | Scorable | ≥ 5 reviews in the feature window |
-| Labelled | ≥ 5 reviews in the target window (otherwise excluded) |
+| Labelled | ≥ 5 reviews in the target window (otherwise unresolved in the decision-date replay) |
 | Positive event | target low-rating share ≥ 30 % **and** ≥ 10 pp above feature-window share |
 | Split | chronological by decision month: train ≤ 2020-12, val 2021, test ≥ 2022-01 |
 
@@ -96,3 +96,21 @@ results/                 generated tables (CSV) and figures
 AI assistance (Claude) was used to help draft parts of the pipeline code and
 tests; all code was reviewed, run and validated by the team. See the AI Use
 Declaration in the report.
+
+## Decision-date investigation queue
+
+For the revised paper, fit the risk model on labelled training windows and the coverage model on all past-eligible training windows. Rank every eligible test product before joining next-month outcomes. Snapshot helpful votes are excluded in this replay. In the existing environment, run:
+
+    python src/01_download.py
+    python src/02_build_windows.py
+    python src/04_features.py --decision-queue
+    python src/08_decision_queue.py
+    python src/09_warning_time.py
+    python paper/render_results.py
+    cd paper
+    pdflatex main.tex
+    pdflatex main.tex
+
+The raw Appliances archive used for this revision has SHA-256 150f209befceaa6f837abc997065b2d251034bbbda19bebc4ad56dac779730c2. The historical benchmark reads the pre-existing results/main_results.csv. The queue-summary and monthly CSVs count confirmed spikes, observable non-events and unknowns. The compressed top-50 ledger identifies every alert. The warning-days CSV records dated sustained crossings for confirmed hits. The paper source also compiles in Overleaf using pdfLaTeX and IEEEtran.
+
+AI assisted in designing, coding, running and writing the decision-date extension. The original AI-use statement above describes the earlier pipeline.

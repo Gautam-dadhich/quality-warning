@@ -10,8 +10,8 @@ data:
   category: Appliances
   # Amazon Reviews'23 raw review file (verify URL against
   # https://amazon-reviews-2023.github.io/ if the download fails)
-  reviews_url: https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/Appliances.jsonl.gz
-  meta_url: https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/meta_categories/meta_Appliances.jsonl.gz
+  reviews_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/Appliances.jsonl.gz
+  meta_url: https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/meta_Appliances.jsonl.gz
   raw_reviews: data/raw/Appliances.jsonl.gz
   raw_meta: data/raw/meta_Appliances.jsonl.gz
   clean_reviews: data/processed/reviews_clean     # extension added automatically (.parquet or .csv.gz)
