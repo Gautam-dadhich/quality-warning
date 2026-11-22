@@ -3,7 +3,7 @@
 AMLBT course project — Goa Institute of Management, Big Data Analytics.
 Parth Arya, Vijay Krishna, Gautam Dadhich.
 
-Code and archived results for the paper in [`paper/main.tex`](paper/main.tex).
+Code and archived results for the paper of the same title.
 The project ranks Amazon Appliances products each month for investigation by a
 quality team, using only review information available on the decision date, and
 counts every alert slot, including alerts whose outcome cannot be observed
@@ -65,11 +65,6 @@ achievable on the decision date. On the validation year, permutation importance
 for this feature is about 0.003 AP (rank 13 of 43,
 `results/hgb_permutation_importance.csv`). The paper states this; the queue
 models in step 1 do not use the feature.
-
-### 3. Build the paper
-
-`paper/main.tex` is self-contained (all numbers and figures are written into the
-file). Compile it with pdfLaTeX and the IEEEtran class, e.g. in Overleaf.
 
 ### Smoke test without downloading (synthetic data)
 
@@ -146,7 +141,6 @@ tests/
   test_windows.py        brute-force recount + leakage/structure assertions
   test_features.py       brute-force check of aspect, change and CUSUM features
 docs/data_dictionary.md  every column explained
-paper/main.tex           final paper source (self-contained)
 results/                 generated tables (CSV) and figures
 ```
 
