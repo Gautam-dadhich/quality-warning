@@ -1,17 +1,21 @@
-# Early Detection of Product Quality Problems from Online Reviews
+# Early Warning of Product Quality Problems from Customer Reviews: Which Products Should a Quality Team Investigate First?
 
 AMLBT course project — Goa Institute of Management, Big Data Analytics.
 Parth Arya, Vijay Krishna, Gautam Dadhich.
 
-A time-aware early-warning framework that predicts, for each product and month,
-whether low-rating activity will rise in the following month, using only
-review information available before the decision date.
+Code and archived results for the paper in [`paper/main.tex`](paper/main.tex).
+The project ranks Amazon Appliances products each month for investigation by a
+quality team, using only review information available on the decision date, and
+counts every alert slot, including alerts whose outcome cannot be observed
+because too few reviews arrive in the following month.
 
 ## Data
 
 Amazon Reviews'23, **Appliances** category (Hou et al., 2024).
 Source: https://amazon-reviews-2023.github.io/ — raw files are **not** redistributed
 in this repository; `src/01_download.py` fetches them from the official source.
+The raw Appliances archive used for the paper has SHA-256
+`150f209befceaa6f837abc997065b2d251034bbbda19bebc4ad56dac779730c2`.
 
 ## Setup
 
@@ -22,24 +26,50 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 ```
 
-Tested with Python 3.11–3.13.
+Tested with Python 3.11–3.13. All thresholds, window lengths, split dates and the
+random seed are in [`config.yaml`](config.yaml). Outputs go to `data/processed/`
+and `results/`.
 
-## Reproduce
+## Reproduce the paper
+
+### 1. Decision-date queue (Tables III–V, Figs. 1–3)
 
 ```bash
-python src/01_download.py          # ~downloads Appliances.jsonl.gz into data/raw/
-python src/02_build_windows.py     # cleaning + product x month windows + labels
+python src/01_download.py
+python src/02_build_windows.py
+python src/04_features.py --decision-queue
+python src/08_decision_queue.py
+python src/09_warning_time.py
+```
+
+The risk model is fitted on labelled training windows and the coverage model on
+all past-eligible training windows. Every eligible test product is ranked before
+next-month outcomes are joined. The snapshot helpful-vote feature is excluded
+from these models.
+
+### 2. Original benchmark (Table II)
+
+```bash
 python src/03_label_report.py      # label counts, sensitivity grid, dataset profile
 python tests/test_windows.py       # brute-force check of window sums / leakage guards
 python src/04_features.py          # complaint aspects, share changes, CUSUM, text documents
 python tests/test_features.py      # brute-force check of step-4 features (incl. CUSUM leakage)
 python src/05_baselines.py         # rule-based and CUSUM baselines -> results/baselines.csv
 python src/06_models.py            # LogReg + gradient boosting, ablation S / S+A / S+A+T
-python src/07_figures.py           # paper figures -> results/figures/
 ```
 
-All thresholds, window lengths, split dates and the random seed are in
-[`config.yaml`](config.yaml). Outputs go to `data/processed/` and `results/`.
+**Note:** the Table II benchmark includes `helpful_mean_past`, built from each
+review's helpful-vote count as recorded in the 2023 snapshot. Those counts include
+votes cast after the decision date, so Table II may slightly overstate what was
+achievable on the decision date. On the validation year, permutation importance
+for this feature is about 0.003 AP (rank 13 of 43,
+`results/hgb_permutation_importance.csv`). The paper states this; the queue
+models in step 1 do not use the feature.
+
+### 3. Build the paper
+
+`paper/main.tex` is self-contained (all numbers and figures are written into the
+file). Compile it with pdfLaTeX and the IEEEtran class, e.g. in Overleaf.
 
 ### Smoke test without downloading (synthetic data)
 
@@ -49,6 +79,31 @@ python src/02_build_windows.py --config tests/config_synthetic.yaml
 python src/03_label_report.py  --config tests/config_synthetic.yaml
 python tests/test_windows.py   --config tests/config_synthetic.yaml
 ```
+
+## Where each result in the paper comes from
+
+| Paper item | File in `results/` |
+|---|---|
+| Table I (cohort by period) | `label_counts_by_split.csv` |
+| Table II (archived benchmark) | `main_results.csv` |
+| Table III (50-slot replay) | `queue_summary.csv`, rows with `cap = 50` |
+| Table IV (capacity) | `queue_summary.csv`, all caps |
+| Table V (1 January 2022 ledger) | `queue_top50.csv.gz` |
+| Fig. 1 (monthly outcomes) | `queue_monthly.csv`, `cap = 50` |
+| Fig. 2 (yield vs. precision) | `queue_summary.csv`, `cap = 50` |
+| Fig. 3 (time to confirmation) | `warning_days.csv`, method `Coverage-adjusted` |
+| 388 / 170 distinct products | `queue_top50.csv.gz` |
+
+**Checks** (Section VII-A of the paper): each policy in `queue_top50.csv.gz` has
+50 distinct product IDs on each of 21 decision dates; grouping the ledger by
+`outcome` reproduces Table III; `warning_days.csv` has 264 `Coverage-adjusted`
+rows with a median of 17 days.
+
+**Time to confirmation** (`days` in `warning_days.csv`) is the number of days
+from the decision date to the first day on which the event criteria were met and
+stayed met through month-end. Because the outcome window is the month that begins
+on the decision date, it cannot exceed about 30 days; it measures how quickly
+confirming reviews arrived, not how far ahead of a problem the alert came.
 
 ## Method summary
 
@@ -76,9 +131,12 @@ src/
   02_build_windows.py    clean reviews, build product-month windows, labels, split
   03_label_report.py     label feasibility, sensitivity grid, dataset profile
   04_features.py         aspect / change / CUSUM features + per-window text documents
+                         (--decision-queue: all past-eligible windows, incl. unknown outcomes)
   05_baselines.py        rolling-rating rules and CUSUM baseline
   06_models.py           ML models + feature-set ablation, importances, predictions
-  07_figures.py          PR curves, PR-AUC bars, capacity curves, importance, case study
+  07_figures.py          figures for the earlier report version
+  08_decision_queue.py   decision-date replay: risk, coverage-adjusted, CUSUM, volume, low prior share
+  09_warning_time.py     time to confirmation for confirmed alerts
   aspects.py             complaint-aspect regex lexicon (8 aspects)
   evaluation.py          shared metrics (PR-AUC, P@top10%, capacity, val-tuned F1, bootstrap CI)
   labels.py              single definition of the target
@@ -88,29 +146,14 @@ tests/
   test_windows.py        brute-force recount + leakage/structure assertions
   test_features.py       brute-force check of aspect, change and CUSUM features
 docs/data_dictionary.md  every column explained
+paper/main.tex           final paper source (self-contained)
 results/                 generated tables (CSV) and figures
 ```
 
 ## AI use
 
-AI assistance (Claude) was used to help draft parts of the pipeline code and
-tests; all code was reviewed, run and validated by the team. See the AI Use
-Declaration in the report.
-
-## Decision-date investigation queue
-
-For the revised paper, fit the risk model on labelled training windows and the coverage model on all past-eligible training windows. Rank every eligible test product before joining next-month outcomes. Snapshot helpful votes are excluded in this replay. In the existing environment, run:
-
-    python src/01_download.py
-    python src/02_build_windows.py
-    python src/04_features.py --decision-queue
-    python src/08_decision_queue.py
-    python src/09_warning_time.py
-    python paper/render_results.py
-    cd paper
-    pdflatex main.tex
-    pdflatex main.tex
-
-The raw Appliances archive used for this revision has SHA-256 150f209befceaa6f837abc997065b2d251034bbbda19bebc4ad56dac779730c2. The historical benchmark reads the pre-existing results/main_results.csv. The queue-summary and monthly CSVs count confirmed spikes, observable non-events and unknowns. The compressed top-50 ledger identifies every alert. The warning-days CSV records dated sustained crossings for confirmed hits. The paper source also compiles in Overleaf using pdfLaTeX and IEEEtran.
-
-AI assisted in designing, coding, running and writing the decision-date extension. The original AI-use statement above describes the earlier pipeline.
+AI tools (Anthropic's Claude and OpenAI's Codex) were used in this project. For
+the original pipeline, AI helped draft parts of the code and tests. For the
+decision-date extension, AI assisted in designing, coding, running and writing
+it. All code was run and checked by the team, and every number in the paper was
+verified against the files in `results/`. See the AI Use Declaration in the paper.

@@ -9,7 +9,7 @@
 | date | datetime | review time (UTC), from Unix-ms `timestamp` |
 | rating | float | star rating 1–5 |
 | title, text | str | review title and body (empty string if missing) |
-| helpful_vote | int | helpful votes |
+| helpful_vote | int | helpful votes as recorded in the 2023 dataset snapshot (includes votes cast after the review date) |
 | verified_purchase | bool | verified purchase flag |
 
 Cleaning rules (counts logged in `results/cleaning_log.csv`): drop rows missing
@@ -38,7 +38,7 @@ Defaults P = 2, F = 1. Only rows with ≥ 1 review in the feature window are kep
 | mean_rating_past | mean star rating |
 | std_rating_past | std. dev. of star rating (population) |
 | verified_share_past | share of verified purchases |
-| helpful_mean_past | mean helpful votes per review |
+| helpful_mean_past | mean helpful votes per review (snapshot counts, so not strictly available on the decision date; used in the Table II benchmark only, excluded from the decision-date queue) |
 | n_prev | reviews in the P months *before* the feature window |
 | volume_change | (n_past − n_prev) / (n_prev + 1) |
 | product_age_months | months since the product's first review |
